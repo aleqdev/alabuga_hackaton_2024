@@ -1,0 +1,435 @@
+<html>
+    <head>
+        <meta charset="utf-8">
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap" rel="stylesheet">
+    </head>
+    <body>
+        <div id="footer">
+            <div id="title">Алабуга хакатон 2024</div>
+            <a href="./api.txt">API</a>
+            <a href="./alabuga.apk" download>APK</a>
+        </div>
+        <div id="mode">
+            <div id="mode-urls" class="selected" onclick="changeMode('urls')">Вставить ссылки</div>
+            <div id="mode-upload" onclick="changeMode('upload')">Загрузить изображения</div>
+        </div>
+        <div id="form">
+            <div id="form-urls">
+                <button id="process-urls" onclick="processUrlsCb()" disabled>Продолжить</button>
+                <div class="separator"></div>
+                <div id="add-url" onclick="addUrlInput()">+</div>
+                <template id="url-input-template">
+                    <div class="url-input-container">
+                        <input oninput="onUrlInput()" class="url-input" placeholder="Пример: https://website.ru/image.png">
+                        <button onclick="removeUrlInput(this)">X</button>
+                    </div>
+                </template>
+            </div>
+            <div id="form-upload" hidden>
+                <button id="process-upload" onclick="processUploadCb()" disabled>Продолжить</button>
+                <div class="separator"></div>
+                <div id="add-upload" onclick="addUploadInput()">+</div>
+                <template id="upload-input-template">
+                    <div class="upload-input-container">
+                        <label>
+                            <div class="upload-label">Загрузить файл</div>
+                            <input type="file" accept="image/png, image/jpeg" class="upload-input" onchange="onUploadChange(this)">
+                        </label>
+                        <button onclick="removeUploadInput(this)">X</button>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </body>
+    <script>
+        const urlsButton = document.getElementById("mode-urls");
+        const uploadButton = document.getElementById("mode-upload");
+        const formUrls = document.getElementById("form-urls");
+        const addUrl = document.getElementById("add-url");
+        const processUrls = document.getElementById("process-urls");
+        const formUpload = document.getElementById("form-upload");
+        const addUpload = document.getElementById("add-upload");
+        const processUpload = document.getElementById("process-upload");
+
+        let mode = "urls";
+
+        function changeMode(new_mode) {
+            if (new_mode == "urls") {
+                urlsButton.classList.add("selected");
+                uploadButton.classList.remove("selected");
+                formUrls.hidden = false;
+                formUpload.hidden = true;
+                formUrls.style.display = "flex";
+                formUpload.style.display = "none";
+            } else if (new_mode == "upload") {
+                urlsButton.classList.remove("selected");
+                uploadButton.classList.add("selected");
+                formUrls.hidden = true;
+                formUpload.hidden = false;
+                formUrls.style.display = "none";
+                formUpload.style.display = "flex";
+            }
+
+            mode = new_mode;
+        }
+
+        function addUrlInput() {
+            formUrls.appendChild(document.querySelector("#url-input-template").content.cloneNode(true));
+            onUrlInput();
+        }
+
+        function removeUrlInput(btn) {
+            if (document.querySelectorAll(".url-input").length == 1) {
+                document.querySelector(".url-input").value = '';
+            } else {
+                btn.parentElement.remove();
+            }
+            onUrlInput();
+        }
+
+        function onUrlInput() {
+            function isValidHttpUrl(string) {
+                let url;
+                
+                try {
+                    url = new URL(string);
+                } catch (_) {
+                    return false;  
+                }
+
+                return url.protocol === "http:" || url.protocol === "https:";
+            }
+
+            let allValid = true;
+            document.querySelectorAll(".url-input").forEach(el => {
+                allValid &= isValidHttpUrl(el.value);
+            });
+
+            if (allValid) {
+                processUrls.disabled = false;
+            } else {
+                processUrls.disabled = true;
+            }
+        }
+
+        function addUploadInput() {
+            formUpload.appendChild(document.querySelector("#upload-input-template").content.cloneNode(true));
+            onUploadChange(null);
+        }
+
+        function removeUploadInput(btn) {
+            if (document.querySelectorAll(".upload-input").length == 1) {
+                document.querySelector(".upload-input").value = null;
+                onUploadChange(document.querySelector(".upload-input"));
+            } else {
+                btn.parentElement.remove();
+                onUploadChange(null);
+            }
+        }
+
+        function onUploadChange(el) {
+            if (el !== null) {
+                if (el.files.length > 0) {
+                    el.parentElement.querySelector(".upload-label").innerHTML = el.files[0].name;
+                } else {
+                    el.parentElement.querySelector(".upload-label").innerHTML = "Загрузить файл"
+                }
+            }
+
+            let allValid = true;
+            document.querySelectorAll(".upload-input").forEach(el => {
+                allValid &= el.files.length > 0;
+            });
+
+            if (allValid) {
+                processUpload.disabled = false;
+            } else {
+                processUpload.disabled = true;
+            }
+        }
+
+        addUrlInput();
+        addUploadInput();
+
+        function processUrlsCb() {
+            let urls = [];
+
+            document.querySelectorAll(".url-input").forEach(el => {
+                urls.push(el.value);
+            });
+
+            fetch("./process-urls", {
+                method: "POST",
+                body: JSON.stringify({
+                    "urls": urls
+                }),
+                headers: {
+                    "Content-type": "application/json; charset=UTF-8"
+                }
+            }).then(resp => resp.text()).then(workid => window.location.href = `./work/${workid}`);
+        }
+
+        function processUploadCb() {
+            let formData = new FormData();
+
+            document.querySelectorAll(".upload-input").forEach(el => {
+                formData.append(el.files[0].name, el.files[0]);
+            });
+
+            fetch("./process-upload", {
+                method: "POST",
+                body: formData
+            }).then(resp => resp.text()).then(workid => window.location.href = `./work/${workid}`);
+        }
+    </script>
+    <style>
+        * {
+            padding: 0;
+            margin: 0;
+            font-family: "Open Sans", sans-serif;
+            font-optical-sizing: auto;
+            font-weight: 500;
+            font-style: normal;
+            font-variation-settings:
+                "wdth" 500;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: whitesmoke;
+        }
+
+        #footer {
+            width: calc(100% - 2rem);
+            height: 3rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            padding-left: 2rem;
+            font-size: x-large;
+            gap: 2rem;
+            background-color: black;
+            color: whitesmoke;
+        }
+
+        #footer a {
+            color: white;
+        }
+
+        #mode {
+            margin-top: 3rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 50%;
+            height: 3rem;
+        }
+
+        #mode div {
+            height: 100%;
+            width: 50%;
+            background-color: #faf0fa;
+            border-color: black;
+            border-style: dashed;
+            border-width: 2px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #mode div:first-child {
+            border-radius: 1rem 0rem 0rem 1rem;
+            border-right: none;
+        }
+
+        #mode div:last-child {
+            border-radius: 0rem 1rem 1rem 0rem;
+            border-left: none;
+        }
+
+        #mode-urls:hover, #mode-upload:hover {
+            cursor: pointer;
+        }
+
+        #mode>.selected {
+            background-color: black;
+            color: #f4a0fd;
+        }
+
+        #form {
+            width: 50%;
+            min-height: 50%;
+            max-height: 1rem;
+            margin-top: 3rem;
+        }
+        
+        #form-urls, #form-upload {
+            background-color: #bababa;
+            width: 100%;
+            max-height: 100%;
+            border-radius: 1rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 1rem;
+            overflow: scroll; 
+        }
+
+        #form-urls, #form-upload {
+            -ms-overflow-style: none;  /* Internet Explorer 10+ */
+            scrollbar-width: none;  /* Firefox */
+        }
+        #form-urls::-webkit-scrollbar, #form-upload::-webkit-scrollbar { 
+            display: none;  /* Safari and Chrome */
+        }
+
+        #form-upload {
+            display: none;
+        }
+
+        #process-urls, #process-upload {
+            min-width: 100%;
+            padding-left: 1rem;
+            padding-right: 1rem;
+            min-height: 2rem;
+            font-size: large;
+            border-radius: 0px;
+            border: none;
+        }
+
+        .separator {
+            width: calc(100% - 0.5rem);
+            height: 0;
+            background-color: none;
+            border-style: dashed;
+            border-width: 0.3rem;
+            border-color: gainsboro;
+            overflow: hidden;
+            margin-top: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .url-input-container {
+            width: calc(100% - 2rem);
+            padding-left: 1rem;
+            padding-right: 1rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+        }
+
+        .url-input-container button {
+            margin-left: 1rem;
+            width: 2rem;
+            height: 2rem;
+            border-radius: 1rem;
+            border: none;
+            user-select: none;
+            cursor: pointer;
+        }
+
+        .url-input-container button:hover {
+            background-color: red;
+            color: whitesmoke;
+        }
+
+        .url-input {
+            width: calc(100% - 2rem);
+            height: 2rem;
+            padding-left: 1rem;
+            padding-right: 1rem;
+            border-radius: 1rem;
+            border: none;
+        }
+
+        #add-url {
+            cursor: pointer;
+            width: 2rem;
+            min-height: 2rem;
+            background-color: whitesmoke;
+            border-radius: 1rem;
+            border: none;
+            margin-bottom: 1rem;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+        }
+
+        #add-url:hover {
+            background-color: #11bb1a;
+            color: white
+        }
+
+        .upload-input-container {
+            width: calc(100% - 2rem);
+            padding-left: 1rem;
+            padding-right: 1rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+        }
+
+        .upload-input-container label {
+            width: 100%;
+        }
+
+        .upload-input-container label div {
+            padding-left: 1rem;
+            display: flex;
+            align-items: center;
+        }
+
+        .upload-input-container button {
+            width: 2rem;
+            height: 2rem;
+            border-radius: 1rem;
+            border: none;
+            user-select: none;
+            cursor: pointer;
+        }
+
+        .upload-input-container button:hover {
+            background-color: red;
+            color: whitesmoke;
+        }
+
+        .upload-input {
+           display: none;
+        }
+
+        .upload-label {
+            background-color: whitesmoke;
+            width: calc(100% - 2rem);
+            height: 2rem;
+            border-radius: 1rem;
+            border: none;
+            cursor: pointer;
+        }
+
+        #add-upload {
+            cursor: pointer;
+            width: 2rem;
+            min-height: 2rem;
+            background-color: whitesmoke;
+            border-radius: 1rem;
+            border: none;
+            margin-bottom: 1rem;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+        }
+
+        #add-upload:hover {
+            background-color: #11bb1a;
+            color: white
+        }
+    </style>
+</html>

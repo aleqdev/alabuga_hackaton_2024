@@ -1,0 +1,23 @@
+ВСЕ ИЗОБРАЖЕНИЯ ДОЛЖНЫ БЫЫТЬ КВАДРАТНОЙ ФОРМЫ
+ИНАЧЕ ИЗОБРАЖЕНИЕ ОБРЕЗАЕТСЯ
+ИДЕАЛЬНЫЙ РАЗМЕР ИЗОБРАЖЕНИЯ 640x640
+
+
+URL:
+POST /process-urls
+JSON {
+    "urls": [
+        "https://website.ru/image.png",
+        "https://website.ru/image.png",
+        "https://website.ru/image.png"
+    ]
+}
+
+
+UPLOAD:
+POST /process-upload
+MULTIPART (
+    ("filename.png", <blob>)
+    ("filename.png", <blob>)
+    ("filename.png", <blob>)
+)
