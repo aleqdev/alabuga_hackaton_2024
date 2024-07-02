@@ -7,6 +7,7 @@ import random
 import asyncio
 import io
 import os
+import json
 from ultralytics import YOLO
 
 
@@ -47,6 +48,38 @@ def prepare_image(image):
     return image.crop((0, 0, min(w, h), min(w, h))).resize((640, 640))
                   
 
+def save_results(results, filenames, workid):
+    classes = ["Плохая сварка","Трещины","Избыточное укрепление","Хорошая сварка","Пустоты","Брызги"]
+    good_classes = ["Хорошая сварка"]
+    bad_classes = ["Плохая сварка","Трещины","Избыточное укрепление","Пустоты","Брызги"]
+
+    with open(f"./work/{workid}/filenames.txt", "w") as f:
+        f.write("\n".join(filenames))
+
+    os.mkdir(f"./work/{workid}/results")
+
+    for filename, result in zip(filenames, results):
+        result.save(f"./work/{workid}/results/{filename}")
+        with open(f"./work/{workid}/results/{filename}.box", "w") as f:
+            class_names = [classes[int(i)] for i in result.boxes.cls]
+            verdict = "False"
+
+            if any(good_class in class_names for good_class in good_classes):
+                verdict = "True"
+
+            if any(bad_class in class_names for bad_class in bad_classes):
+                verdict = "False" # Перезаписывает True, преднамеренно
+
+            f.write(json.dumps([
+                result.boxes.xyxy.tolist(),
+                class_names,
+                verdict
+            ]))
+
+    with open(f"./work/{workid}/done", "w") as f:
+        f.write("done")
+
+
 @app.route('/process-urls', methods=["POST"])
 def process_urls():
     async def work(urls, workid):
@@ -58,10 +91,12 @@ def process_urls():
                         image = prepare_image(Image.open(io.BytesIO(await resp.read())))
                         image.save(f'./work/{workid}/{i}.png')
 
-        results = model([f'./work/{workid}/{i}.png' for i in range(len(urls))])
+        filenames = [f'{i}.png' for i in range(len(urls))]
 
-        for result in results:
-            result.show()
+        results = model([f'./work/{workid}/{filename}' for filename in filenames])
+
+        save_results(results, filenames, workid)
+
 
     workid = randomword(16)
     thread = Thread(target=asyncio.run, args=(work(request.json["urls"], workid),))
@@ -74,21 +109,22 @@ def process_urls():
 def process_upload():
     async def work(files, workid):
         os.mkdir(f"./work/{workid}")
-        paths = []
+
+        filenames = []
         for filename, file in files.items():
             image = prepare_image(Image.open(file))
 
             if not filename.endswith(".png"):
                 filename += ".png"
 
-            paths.append(f'./work/{workid}/{filename}')
+            filenames.append(filename)
 
             image.save(f'./work/{workid}/{filename}')
 
-        results = model(paths)
+        results = model([f'./work/{workid}/{filename}' for filename in filenames])
 
-        for result in results:
-            result.show()
+        save_results(results, filenames, workid)
+
 
     files = {
         filename: io.BytesIO(file.read())
@@ -110,14 +146,48 @@ def work(workid: str):
     return render_template("./work.html", workid=workid)
 
 
-@app.route("/work/<workid>/data")
-async def work_data(workid: str):
+@app.route("/work/<workid>/done")
+async def work_done(workid: str):
     if len(workid) != 16 or not workid.isalpha():
         return "denied"
     
-    for i in range(60*60):
+    for _ in range(60*60):
         if os.path.exists(f"./work/{workid}/done"):
             break
         await asyncio.sleep(1)
 
-    return "OK"
+    return "done"
+
+
+@app.route("/work/<workid>/filenames")
+def work_filenames(workid: str):
+    if len(workid) != 16 or not workid.isalpha():
+        return "denied"
+    
+    with open(f"./work/{workid}/filenames.txt", "r") as f:
+        return json.dumps(f.readlines())
+
+
+@app.route("/work/<workid>/results/<filename>")
+def work_result(workid: str, filename: str):
+    if len(workid) != 16 or not workid.isalpha():
+        return "denied"
+    
+    with open(f"./work/{workid}/filenames.txt", "r") as f:
+        if filename not in f.read().split("\n"):
+            return "denied" 
+        
+    return send_from_directory(f"./work/{workid}/results", filename, mimetype='image/png')
+
+
+@app.route("/work/<workid>/results/box/<filename>")
+def work_result_box(workid: str, filename: str):
+    if len(workid) != 16 or not workid.isalpha():
+        return "denied"
+    
+    with open(f"./work/{workid}/filenames.txt", "r") as f:
+        if filename not in f.read().split("\n"):
+            return "denied" 
+        
+    return send_from_directory(f"./work/{workid}/results", filename + ".box", mimetype='application/json')
+

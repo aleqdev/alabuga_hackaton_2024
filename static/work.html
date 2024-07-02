@@ -17,13 +17,109 @@
             <span class="loader"></span>
             <span>Обработка...</span>
         </div>
+        <div id="results-container">
+            <template id="result-template">
+                <div class="result">
+                    <img class="result-img" src="/work/{{ workid }}/results/"> 
+                    <div class="result-verdict"></div>
+                    <div class="result-boxes">
+                        <template id="result-box-template">
+                            <div class="result-box-container">
+                                <span class="result-class"></span>
+                                <span class="result-box"></span>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </template>
+        </div>
     </body>
-    <script>
-        fetch("./work/{{ workid }}/data").then(resp => resp.text()).then(text => {
+    <script>fetch("/work/{{ workid }}/done").then(
+        _resp => {
+            fetch("/work/{{ workid }}/filenames").then(resp => resp.json()).then(filenames => {
+                document.getElementById("loader-container").remove();
 
+                const results = document.getElementById("results-container");
+
+                filenames.forEach(filename => {
+                    let result = document.querySelector("#result-template").content.cloneNode(true);
+                    result.querySelector("img").src += filename 
+
+                    let boxes = result.querySelector(".result-boxes");
+                    let verdict = result.querySelector(".result-verdict");
+                    let resultMain = result.querySelector(".result");
+
+                    fetch(`/work/{{ workid }}/results/box/${filename}`).then(resp => resp.json()).then(data => {
+                        if (data[2] == "True") {
+                            resultMain.classList.add("good");
+                        }
+
+                        verdict.innerHTML = "Вердикт: " + data[2];
+
+                        let bounds = data[0];
+                        let classes = data[1];
+
+                        let zip = bounds.map((k, i) => [k, classes[i]]);
+
+                        zip.forEach(d => {
+                            let resultBox = document.querySelector("#result-box-template").content.cloneNode(true);
+                            resultBox.querySelector(".result-class").innerHTML = d[1] + ": ";
+                            resultBox.querySelector(".result-box").innerHTML = d[0].map(i => Math.round(i)).toString();
+                            boxes.appendChild(resultBox);
+                        });
+                    })
+
+                    results.appendChild(result);
+                });
+            });
         });
     </script>
     <style>
+        .result {
+            padding: 1rem;
+            background-color: #cb3434;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            border-radius: 0.5rem;
+        }
+
+        .result:last-child {
+            margin-bottom: 5rem;
+        }
+
+        .result-verdict {
+            padding-top: 0.5rem;
+            padding-bottom: 0.5rem;
+            color: white;
+            width: 100%;
+        }
+
+        .result.good {
+            background-color: #4db575;
+        }
+
+        .result-boxes {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            width: 100%;
+        }
+
+        .result-box-container {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .result-class {
+            color: white;
+        }
+
+        .result-box {
+            color: white;
+        }
+
+
         * {
             padding: 0;
             margin: 0;
@@ -63,6 +159,20 @@
             position: absolute;
             right: 2rem;
             top: 0.5rem;
+        }
+
+        #results-container {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+            align-items: center;
+            padding-top: 2rem;
+        }
+
+        .result-img {
+            width: 500px;
+            height: 500px;
+            border-radius: 0.5rem;
         }
 
         #loader-container {
