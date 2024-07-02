@@ -1,0 +1,9 @@
+version: "3.3"
+services:
+  web:
+    build: "."
+    restart: always
+    ports:
+      - "32099:32099"
+    env_file:
+      - ./.env.dev
