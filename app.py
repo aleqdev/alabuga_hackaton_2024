@@ -10,7 +10,7 @@ import os
 from ultralytics import YOLO
 
 
-model = YOLO("model.ipynb")
+model = YOLO("model.pt")
 
 
 try:
@@ -58,7 +58,7 @@ def process_urls():
                         image = prepare_image(Image.open(io.BytesIO(await resp.read())))
                         image.save(f'./work/{workid}/{i}.png')
 
-        results = model([f'./work/{workid}/{i}' for i in range(len(urls))])
+        results = model([f'./work/{workid}/{i}.png' for i in range(len(urls))])
 
         for result in results:
             result.show()
@@ -74,15 +74,18 @@ def process_urls():
 def process_upload():
     async def work(files, workid):
         os.mkdir(f"./work/{workid}")
+        paths = []
         for filename, file in files.items():
             image = prepare_image(Image.open(file))
 
             if not filename.endswith(".png"):
                 filename += ".png"
 
+            paths.append(f'./work/{workid}/{filename}')
+
             image.save(f'./work/{workid}/{filename}')
 
-        results = model([f'./work/{workid}/{filename}' for filename in files])
+        results = model(paths)
 
         for result in results:
             result.show()
