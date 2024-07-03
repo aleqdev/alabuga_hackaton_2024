@@ -191,6 +191,19 @@ async def work_done(workid: str):
     return "done"
 
 
+@app.route("/work/<workid>/error")
+async def work_error(workid: str):
+    if len(workid) != 16 or not workid.isalpha():
+        return "denied"
+    
+    for _ in range(60*60):
+        if os.path.exists(f"./work/{workid}/error"):
+            break
+        await asyncio.sleep(1)
+
+    return "error"
+
+
 @app.route("/work/<workid>/filenames")
 def work_filenames(workid: str):
     if len(workid) != 16 or not workid.isalpha():

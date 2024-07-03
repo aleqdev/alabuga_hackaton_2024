@@ -34,7 +34,18 @@
             </template>
         </div>
     </body>
-    <script>fetch("/work/{{ workid }}/done").then(
+    <script>
+    fetch("/work/{{ workid }}/error").then(_resp => {
+        document.getElementById("loader-container").remove();
+
+        const results = document.getElementById("results-container");
+
+        results.innerHTML = "Произошла ошибка\nСервер принимает файлы PNG/JPEG\nПроверьте доступность ваших URL"
+    });
+    
+    
+    
+    fetch("/work/{{ workid }}/done").then(
         _resp => {
             fetch("/work/{{ workid }}/filenames").then(resp => resp.json()).then(filenames => {
                 document.getElementById("loader-container").remove();
