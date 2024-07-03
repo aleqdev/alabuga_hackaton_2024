@@ -58,26 +58,31 @@ def save_results(results, filenames, workid):
 
     os.mkdir(f"./work/{workid}/results")
 
-    for filename, result in zip(filenames, results):
-        result.save(f"./work/{workid}/results/{filename}")
-        with open(f"./work/{workid}/results/{filename}.box", "w") as f:
-            class_names = [classes[int(i)] for i in result.boxes.cls]
-            verdict = "False"
+    try:
+        for filename, result in zip(filenames, results):
+            result.save(f"./work/{workid}/results/{filename}")
+            with open(f"./work/{workid}/results/{filename}.box", "w") as f:
+                class_names = [classes[int(i)] for i in result.boxes.cls]
+                verdict = "False"
 
-            if any(good_class in class_names for good_class in good_classes):
-                verdict = "True"
+                if any(good_class in class_names for good_class in good_classes):
+                    verdict = "True"
 
-            if any(bad_class in class_names for bad_class in bad_classes):
-                verdict = "False" # Перезаписывает True, преднамеренно
+                if any(bad_class in class_names for bad_class in bad_classes):
+                    verdict = "False" # Перезаписывает True, преднамеренно
 
-            f.write(json.dumps([
-                result.boxes.xyxy.tolist(),
-                class_names,
-                verdict
-            ]))
+                f.write(json.dumps([
+                    result.boxes.xyxy.tolist(),
+                    class_names,
+                    verdict
+                ]))
 
-    with open(f"./work/{workid}/done", "w") as f:
-        f.write("done")
+        with open(f"./work/{workid}/done", "w") as f:
+            f.write("done")
+
+    except Exception:
+        with open(f"./work/{workid}/error", "w") as f:
+            f.write("error")
 
 
 @app.route('/process-urls', methods=["POST"])
