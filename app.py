@@ -58,49 +58,51 @@ def save_results(results, filenames, workid):
 
     os.mkdir(f"./work/{workid}/results")
 
-    try:
-        for filename, result in zip(filenames, results):
-            result.save(f"./work/{workid}/results/{filename}")
-            with open(f"./work/{workid}/results/{filename}.box", "w") as f:
-                class_names = [classes[int(i)] for i in result.boxes.cls]
-                verdict = "False"
+    for filename, result in zip(filenames, results):
+        result.save(f"./work/{workid}/results/{filename}")
+        with open(f"./work/{workid}/results/{filename}.box", "w") as f:
+            class_names = [classes[int(i)] for i in result.boxes.cls]
+            verdict = "False"
 
-                if any(good_class in class_names for good_class in good_classes):
-                    verdict = "True"
+            if any(good_class in class_names for good_class in good_classes):
+                verdict = "True"
 
-                if any(bad_class in class_names for bad_class in bad_classes):
-                    verdict = "False" # Перезаписывает True, преднамеренно
+            if any(bad_class in class_names for bad_class in bad_classes):
+                verdict = "False" # Перезаписывает True, преднамеренно
 
-                f.write(json.dumps([
-                    result.boxes.xyxy.tolist(),
-                    class_names,
-                    verdict
-                ]))
+            f.write(json.dumps([
+                result.boxes.xyxy.tolist(),
+                class_names,
+                verdict
+            ]))
 
-        with open(f"./work/{workid}/done", "w") as f:
-            f.write("done")
+    with open(f"./work/{workid}/done", "w") as f:
+        f.write("done")
 
-    except Exception:
-        with open(f"./work/{workid}/error", "w") as f:
-            f.write("error")
 
 
 @app.route('/process-urls', methods=["POST"])
 def process_urls():
     async def work(urls, workid):
         os.mkdir(f"./work/{workid}")
-        async with aiohttp.ClientSession() as session:
-            for i, url in enumerate(urls):
-                async with session.get(url) as resp:
-                    if resp.status == 200:
-                        image = prepare_image(Image.open(io.BytesIO(await resp.read())))
-                        image.save(f'./work/{workid}/{i}.png')
 
-        filenames = [f'{i}.png' for i in range(len(urls))]
+        try:
+            async with aiohttp.ClientSession() as session:
+                for i, url in enumerate(urls):
+                    async with session.get(url) as resp:
+                        if resp.status == 200:
+                            image = prepare_image(Image.open(io.BytesIO(await resp.read())))
+                            image.save(f'./work/{workid}/{i}.png')
 
-        results = model([f'./work/{workid}/{filename}' for filename in filenames])
+            filenames = [f'{i}.png' for i in range(len(urls))]
 
-        save_results(results, filenames, workid)
+            results = model([f'./work/{workid}/{filename}' for filename in filenames])
+
+            save_results(results, filenames, workid)
+
+        except Exception:
+            with open(f"./work/{workid}/error", "w") as f:
+                f.write("error")
 
 
     workid = randomword(16)
@@ -115,20 +117,25 @@ def process_upload():
     async def work(files, workid):
         os.mkdir(f"./work/{workid}")
 
-        filenames = []
-        for filename, file in files.items():
-            image = prepare_image(Image.open(file))
+        try:
+            filenames = []
+            for filename, file in files.items():
+                image = prepare_image(Image.open(file))
 
-            if not filename.endswith(".png"):
-                filename += ".png"
+                if not filename.endswith(".png"):
+                    filename += ".png"
 
-            filenames.append(filename)
+                filenames.append(filename)
 
-            image.save(f'./work/{workid}/{filename}')
+                image.save(f'./work/{workid}/{filename}')
 
-        results = model([f'./work/{workid}/{filename}' for filename in filenames])
+            results = model([f'./work/{workid}/{filename}' for filename in filenames])
 
-        save_results(results, filenames, workid)
+            save_results(results, filenames, workid)
+
+        except Exception:
+            with open(f"./work/{workid}/error", "w") as f:
+                f.write("error")
 
 
     files = {
@@ -148,20 +155,25 @@ def process_bytes():
     async def work(files, workid):
         os.mkdir(f"./work/{workid}")
 
-        filenames = []
-        for filename, file in files.items():
-            image = prepare_image(Image.open(file))
+        try:
+            filenames = []
+            for filename, file in files.items():
+                image = prepare_image(Image.open(file))
 
-            if not filename.endswith(".png"):
-                filename += ".png"
+                if not filename.endswith(".png"):
+                    filename += ".png"
 
-            filenames.append(filename)
+                filenames.append(filename)
 
-            image.save(f'./work/{workid}/{filename}')
+                image.save(f'./work/{workid}/{filename}')
 
-        results = model([f'./work/{workid}/{filename}' for filename in filenames])
+            results = model([f'./work/{workid}/{filename}' for filename in filenames])
 
-        save_results(results, filenames, workid)
+            save_results(results, filenames, workid)
+
+        except Exception:
+            with open(f"./work/{workid}/error", "w") as f:
+                f.write("error")
 
 
     files = {
