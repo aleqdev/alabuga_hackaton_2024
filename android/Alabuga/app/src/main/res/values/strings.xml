@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">AlabugaHackaton</string>
+    <string name="take_photo">Сделать фото</string>
+    <string name="result">result</string>
+</resources>
