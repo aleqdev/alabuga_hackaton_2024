@@ -160,7 +160,7 @@ def process_bytes():
 
 
     files = {
-        "image.png": io.BytesIO(request.stream)
+        "image.png": io.BytesIO(request.data)
     }
 
     workid = randomword(16)
