@@ -138,6 +138,38 @@ def process_upload():
     return workid
 
 
+@app.route('/process-bytes', methods=["POST"])
+def process_bytes():
+    async def work(files, workid):
+        os.mkdir(f"./work/{workid}")
+
+        filenames = []
+        for filename, file in files.items():
+            image = prepare_image(Image.open(file))
+
+            if not filename.endswith(".png"):
+                filename += ".png"
+
+            filenames.append(filename)
+
+            image.save(f'./work/{workid}/{filename}')
+
+        results = model([f'./work/{workid}/{filename}' for filename in filenames])
+
+        save_results(results, filenames, workid)
+
+
+    files = {
+        "image.png": io.BytesIO(request.stream)
+    }
+
+    workid = randomword(16)
+    thread = Thread(target=asyncio.run, args=(work(files, workid),))
+    thread.start()
+
+    return workid
+
+
 @app.route("/work/<workid>")
 def work(workid: str):
     if len(workid) != 16 or not workid.isalpha():
